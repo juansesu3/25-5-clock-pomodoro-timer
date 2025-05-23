@@ -1,44 +1,20 @@
-import { IoMdArrowRoundDown, IoMdArrowRoundUp } from "react-icons/io";
-import { FaPlay, FaPause } from "react-icons/fa";
+
+import { IoMdArrowRoundDown } from "react-icons/io";
+import { IoMdArrowRoundUp } from "react-icons/io";
+import { FaPlay } from "react-icons/fa";
+import { FaPause } from "react-icons/fa";
 import { TbRefresh } from "react-icons/tb";
+// (importaciones de íconos igual que antes)
 import React, { useState, useEffect, useRef } from "react";
+// (importaciones de íconos igual que antes)
 
 const Clock = () => {
     const [breakLength, setBreakLength] = useState(5);
     const [sessionLength, setSessionLength] = useState(25);
-    const [timeLeft, setTimeLeft] = useState(25 * 60);
+    const [timeLeft, setTimeLeft] = useState(25 * 60); // en segundos
     const [isRunning, setIsRunning] = useState(false);
     const [isSession, setIsSession] = useState(true);
     const timerRef = useRef(null);
-
-    // Cargar desde localStorage solo el estado del temporizador
-    useEffect(() => {
-        const savedState = JSON.parse(localStorage.getItem("pomodoroState"));
-        if (savedState) {
-            setIsRunning(savedState.isRunning);
-            setIsSession(savedState.isSession);
-
-            if (savedState.isRunning && savedState.lastUpdated) {
-                const elapsed = Math.floor((Date.now() - savedState.lastUpdated) / 1000);
-                const updatedTimeLeft = savedState.timeLeft - elapsed;
-                setTimeLeft(updatedTimeLeft > 0 ? updatedTimeLeft : 0);
-            } else {
-                setTimeLeft(savedState.timeLeft || sessionLength * 60);
-            }
-        } else {
-            setTimeLeft(sessionLength * 60);
-        }
-    }, [sessionLength]);
-
-    // Guardar solo los datos de ejecución y temporizador
-    useEffect(() => {
-        localStorage.setItem("pomodoroState", JSON.stringify({
-            timeLeft,
-            isRunning,
-            isSession,
-            lastUpdated: Date.now()
-        }));
-    }, [timeLeft, isRunning, isSession]);
 
     const formatTime = (time) => {
         const minutes = String(Math.floor(time / 60)).padStart(2, '0');
@@ -53,12 +29,9 @@ const Clock = () => {
         setTimeLeft(25 * 60);
         setIsRunning(false);
         setIsSession(true);
-        localStorage.removeItem("pomodoroState");
         const beep = document.getElementById("beep");
-        if (beep) {
-            beep.pause();
-            beep.currentTime = 0;
-        }
+        beep.pause();
+        beep.currentTime = 0;
     };
 
     const handleIncrement = (type) => {
@@ -82,50 +55,27 @@ const Clock = () => {
     };
 
     const toggleTimer = () => {
-        setIsRunning((prev) => {
-            const newRunning = !prev;
-            if (newRunning) {
-                localStorage.setItem("pomodoroState", JSON.stringify({
-                    timeLeft,
-                    isRunning: true,
-                    isSession,
-                    lastUpdated: Date.now()
-                }));
-            }
-            return newRunning;
-        });
+        setIsRunning((prev) => !prev);
     };
 
+    // Temporizador
     useEffect(() => {
         if (isRunning) {
             timerRef.current = setInterval(() => {
                 setTimeLeft((prev) => {
-                    if (prev <= 0) {
+                    if (prev === 0) {
                         const beep = document.getElementById("beep");
-                        if (beep) beep.play();
+                        beep.play();
 
-                        const nextTime = isSession ? breakLength * 60 : sessionLength * 60;
-                        setIsSession((prevSession) => !prevSession);
-
-                        localStorage.setItem("pomodoroState", JSON.stringify({
-                            timeLeft: nextTime,
-                            isRunning: true,
-                            isSession: !isSession,
-                            lastUpdated: Date.now()
-                        }));
-
-                        return nextTime;
+                        if (isSession) {
+                            setIsSession(false);
+                            return breakLength * 60;
+                        } else {
+                            setIsSession(true);
+                            return sessionLength * 60;
+                        }
                     }
-
-                    const updated = prev - 1;
-                    localStorage.setItem("pomodoroState", JSON.stringify({
-                        timeLeft: updated,
-                        isRunning: true,
-                        isSession,
-                        lastUpdated: Date.now()
-                    }));
-
-                    return updated;
+                    return prev - 1;
                 });
             }, 1000);
         } else {
@@ -133,7 +83,7 @@ const Clock = () => {
         }
 
         return () => clearInterval(timerRef.current);
-    }, [isRunning, isSession, breakLength, sessionLength]);
+    }, [isRunning, breakLength, sessionLength, isSession]);
 
     return (
         <div className="clock-container">
